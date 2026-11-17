@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Nothing in the package changed: this is its first version published from GitHub, under npm's trusted publisher, with provenance.
+
 ## 0.1.0
 
 - One tool, `ask_user_question`: questions with options on one card of the ComChatX page, answered later.

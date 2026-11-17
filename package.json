@@ -1,6 +1,6 @@
 {
   "name": "@comchatx/cx-ask-user-question",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "cx asks in the chat with options you can pick.",
   "license": "MIT",
   "author": "ComChatX",
