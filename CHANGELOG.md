@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- The card's name is the one signed on 2026-11-17: "Question Cards" on the English page (`comchatx.name`) and 「提问卡」 on the Chinese page (`comchatx.nameZh`).
+- `package-lock.json`'s own version, which still read 0.1.0, reads the package's version again.
+
 ## 0.1.1
 
 - Nothing in the package changed: this is its first version published from GitHub, under npm's trusted publisher, with provenance.
