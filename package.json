@@ -1,55 +1,62 @@
 {
-  "name": "@comchatx/cx-replace-me",
+  "name": "@comchatx/cx-ask-user-question",
   "version": "0.1.0",
-  "description": "REPLACE: the card's line in English, written by the copy page the guide names.",
+  "description": "cx asks in the chat with options you can pick.",
   "license": "MIT",
   "author": "ComChatX",
-  "homepage": "https://github.com/comchatx/cx-replace-me#readme",
+  "homepage": "https://github.com/comchatx/cx-ask-user-question#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/comchatx/cx-replace-me.git"
+    "url": "git+https://github.com/comchatx/cx-ask-user-question.git"
   },
-  "bugs": "https://github.com/comchatx/cx-replace-me/issues",
+  "bugs": "https://github.com/comchatx/cx-ask-user-question/issues",
   "keywords": [
     "pi-package"
   ],
   "type": "module",
   "pi": {
+    "extensions": [
+      "./dist/extensions"
+    ],
     "skills": [
       "./skills"
     ]
   },
   "files": [
+    "dist",
     "skills",
     "README.zh-CN.md"
   ],
   "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "comchatx": {
-    "name": "REPLACE: the name the Plugins page prints",
-    "about": "REPLACE: the card's line in Chinese",
+    "name": "Question Cards",
+    "about": "cx 在对话里提问时会列出选项，点选即可回答。",
     "mark": {
-      "line": "REPLACE"
+      "line": "chat"
     },
-    "section": "REPLACE",
-    "order": 0,
+    "section": "extensions",
+    "order": 105,
     "skills": {
-      "cx-replace-me": {
+      "cx-ask-user-question": {
         "about": {
-          "en": "REPLACE: what the skill tells cx, in English",
-          "zh": "REPLACE: what the skill tells cx, in Chinese"
+          "en": "Tells cx how to ask you and how your answers come back.",
+          "zh": "告诉 cx 怎样提问、回答如何传回。"
         }
       }
-    },
-    "builds": [
-      "REPLACE"
-    ]
+    }
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "1.5.0",
+    "@earendil-works/pi-coding-agent": "1.5.2",
     "@types/node": "26.2.0",
+    "esbuild": "0.27.2",
     "typescript": "7.0.2",
     "vitest": "4.1.11"
   }
