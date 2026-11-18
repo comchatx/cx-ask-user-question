@@ -11,3 +11,4 @@ description: Tells cx how to ask you and how your answers come back.
 - `propose` puts one thing on a card for a yes or a no: a `title` of up to 100 characters, the question the seller reads, and an optional `message` of up to 300, what will happen. The card's two answers are No and Yes; it has no skip.
 - `propose` returns at once too, and does not hold the turn. The seller's answer arrives as a new message: "The seller answered Yes to your proposal: <title>" or "The seller answered No to your proposal: <title>".
 - Both cards stay on the seller's screen past the end of the turn, a message and a stop, until they are answered. When the computer is switched off and on, the package puts each unanswered card back.
+- `place: { file }` writes the card to that file on the seller's board instead of the chat, with `level` 1 to 3 for how urgent it is, as the `cx-board` skill says.
