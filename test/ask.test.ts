@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { validateToolArguments } from "@earendil-works/pi-ai";
 import { expect, it } from "vitest";
-import { BOUNDS, CONFIRM_FORM, NEVER, OPTION_FORM, PARAMETERS, PROPOSE, PROPOSE_BOUNDS, PROPOSE_PARAMETERS, TOOL, answerText, answersOf, confirmedOf, formOf, proposalOf, proposalText, waiting, type Params } from "../src/extensions/ask-user-question.js";
+import { BOUNDS, CONFIRM_FORM, cardOf, NEVER, OPTION_FORM, PARAMETERS, PROPOSE, PROPOSE_BOUNDS, PROPOSE_PARAMETERS, TOOL, answerText, answersOf, confirmedOf, formOf, proposalOf, proposalText, waiting, type Params } from "../src/extensions/ask-user-question.js";
 
 const tool = { name: TOOL, description: "", parameters: PARAMETERS as never };
 const valid = (args: unknown): unknown => validateToolArguments(tool, { type: "toolCall", id: "c", name: TOOL, arguments: args as never });
@@ -77,3 +77,20 @@ it("writes a proposal as the page's confirm form, reads the seller's 是 or 否,
   expect(waiting([entry({ asked: proposal }), entry({ asked: formOf("a1", { questions: [{ question: "How?", options: [{ label: "x" }] }] }) }), entry({ answered: "a1", value: null }), handed])).toEqual([{ asked: proposal }]);
 });
 
+
+it("writes an asking as a board card: its title, asks, level where given, the form as one line of JSON in questions, and the questions and options in words", () => {
+  const form = formOf("a1", { questions: [{ question: "How?", options: [{ label: "By sea", description: "35 days" }, { label: "By air" }] }, { question: "Colours?", multiSelect: true, options: [{ label: "Blue" }] }] });
+  expect(cardOf(form, 2)).toBe(`---\ntitle: "How?"\nasks: true\nlevel: 2\nquestions: ${JSON.stringify(form)}\n---\n\nHow?\n- By sea: 35 days\n- By air\n\nColours?\n- Blue\n`);
+  const proposal = proposalOf("p1", { title: "Export \"this\" plan?", message: "One sheet." });
+  expect(cardOf(proposal, undefined)).toBe(`---\ntitle: "Export \\"this\\" plan?"\nasks: true\nquestions: ${JSON.stringify(proposal)}\n---\n\nExport "this" plan?\n\nOne sheet.\n`);
+});
+
+it("takes a place of a Markdown file and a level of 1 to 3 on both tools, and refuses any other", () => {
+  const one = { question: "How?", options: [{ label: "By sea" }] };
+  expect(valid({ questions: [one], place: { file: "/tenant/board/main/待办/a.md", level: 3 } })).toMatchObject({ place: { level: 3 } });
+  expect(validProposal({ title: "Export?", place: { file: "a.md" } })).toMatchObject({ place: { file: "a.md" } });
+  for (const place of [{}, { file: "a.txt" }, { file: "a.md", level: 4 }, { file: "a.md", level: 0 }, { file: "a.md", other: 1 }]) {
+    expect(() => valid({ questions: [one], place }), JSON.stringify(place)).toThrow();
+    expect(() => validProposal({ title: "x", place }), JSON.stringify(place)).toThrow();
+  }
+});
