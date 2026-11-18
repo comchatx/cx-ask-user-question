@@ -29,7 +29,7 @@ export const PLACE = {
   additionalProperties: false,
   required: ["file"],
   properties: {
-    file: { type: "string", minLength: 4, pattern: "\\.md$", description: "The card's file on the seller's board, as /tenant/board/<board>/<tab>/<name>.md." },
+    file: { type: "string", minLength: 4, pattern: "\\.md$", description: "The card's file on the seller's board, as /tenant/board/<board>/<tab>/<name>.md. The card is written at that path and replaces a file already there." },
     level: { type: "integer", enum: [1, 2, 3], description: "How urgent the card is: 1 routine, 2 urgent, 3 very urgent." },
   },
   description: "Write the asking as a card to this file on the seller's board instead of the chat.",
