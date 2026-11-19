@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 /** The mark of the ComChatX page's option form: the page draws an input whose placeholder carries it as one card. */
@@ -21,6 +23,18 @@ export const BOUNDS = { questions: 4, options: 4, question: 100, label: 30, desc
 /** The bounds on one proposal, held to the same hold. */
 export const PROPOSE_BOUNDS = { title: 100, message: 300 } as const;
 
+/** Where cx puts the asking instead of the chat: a card's file on the seller's board, and how urgent the card is. */
+export const PLACE = {
+  type: "object",
+  additionalProperties: false,
+  required: ["file"],
+  properties: {
+    file: { type: "string", minLength: 4, pattern: "\\.md$", description: "The card's file on the seller's board, as /tenant/board/<board>/<tab>/<name>.md. The card is written at that path and replaces a file already there." },
+    level: { type: "integer", enum: [1, 2, 3], description: "How urgent the card is: 1 routine, 2 urgent, 3 very urgent." },
+  },
+  description: "Write the asking as a card to this file on the seller's board instead of the chat.",
+} as const;
+
 export const PROPOSE_PARAMETERS = {
   type: "object",
   additionalProperties: false,
@@ -28,6 +42,7 @@ export const PROPOSE_PARAMETERS = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: PROPOSE_BOUNDS.title, description: "The one thing proposed, as a yes-or-no question the seller reads." },
     message: { type: "string", maxLength: PROPOSE_BOUNDS.message, description: "What will happen on a yes, under the question." },
+    place: PLACE,
   },
 } as const;
 
@@ -61,14 +76,16 @@ export const PARAMETERS = {
         },
       },
     },
+    place: PLACE,
   },
 } as const;
 
-export type Params = { readonly questions: readonly { readonly question: string; readonly options: readonly { readonly label: string; readonly description?: string }[]; readonly multiSelect?: boolean }[] };
+export type Place = { readonly file: string; readonly level?: 1 | 2 | 3 };
+export type Params = { readonly place?: Place; readonly questions: readonly { readonly question: string; readonly options: readonly { readonly label: string; readonly description?: string }[]; readonly multiSelect?: boolean }[] };
 type Choice = { readonly name: string; readonly line?: string };
 export type Form = { readonly form: typeof OPTION_FORM; readonly ask: string; readonly questions: readonly { readonly words: string; readonly options: readonly Choice[]; readonly several?: true }[] };
 export type Answer = { readonly chosen: readonly string[]; readonly own?: string } | null;
-export type ProposeParams = { readonly title: string; readonly message?: string };
+export type ProposeParams = { readonly title: string; readonly message?: string; readonly place?: Place };
 export type Proposal = { readonly form: typeof CONFIRM_FORM; readonly ask: string; readonly title: string; readonly message?: string };
 /** Either form this package asks: what is recorded, and asked again, under its `ask`. */
 export type Asked = Form | Proposal;
@@ -120,6 +137,26 @@ export function answerText(form: Form, answers: readonly Answer[]): string {
     return `- ${question.words} → ${said}`;
   })].join("\n");
 }
+
+/**
+ * The asking as a card of the seller's board: its title, `asks`, the form as one line of JSON in `questions`, `level` where cx gave one, and
+ * the questions and options in words, for a reader that does not draw the form.
+ */
+export function cardOf(form: Asked, level: Place["level"]): string {
+  const title = form.form === CONFIRM_FORM ? form.title : form.questions[0]!.words;
+  const words = form.form === CONFIRM_FORM ? [form.title, ...(form.message === undefined ? [] : [form.message])]
+    : form.questions.map((question) => [question.words, ...question.options.map((option) => `- ${option.name}${option.line === undefined ? "" : `: ${option.line}`}`)].join("\n"));
+  return ["---", `title: ${JSON.stringify(title)}`, "asks: true", ...(level === undefined ? [] : [`level: ${level}`]), `questions: ${JSON.stringify(form)}`, "---", "", words.join("\n\n"), ""].join("\n");
+}
+
+/** Writes the card to its file, the directories to it made. Nothing waits on the seller, and nothing is recorded to ask again. */
+async function place(form: Asked, where: Place, cwd: string): Promise<string> {
+  const file = resolve(cwd, where.file);
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, cardOf(form, where.level));
+  return file;
+}
+const placed = (file: string): string => `The card is in the seller's Inbox at ${file}. Their answer will arrive as a later message naming the card.`;
 
 type Entry = { readonly type: string; readonly customType?: string; readonly data?: unknown; readonly details?: unknown };
 /** An asking cx does not have the answer to: unanswered, or answered with a value the seller gave that never reached cx. */
@@ -183,6 +220,8 @@ export default function askUserQuestion(pi: ExtensionAPI): void {
     parameters: PARAMETERS as never,
     async execute(_call, params, _signal, _update, ctx) {
       const form = formOf(randomUUID(), params as Params);
+      const where = (params as Params).place;
+      if (where !== undefined) { const file = await place(form, where, ctx.cwd); return { content: [{ type: "text", text: placed(file) }], details: { ask: form.ask, file } }; }
       pi.appendEntry(KIND, { asked: form });
       ask(form, ctx);
       return { content: [{ type: "text", text: "The card with these questions is asked of the seller. Their answers will arrive as a later message." }], details: { ask: form.ask } };
@@ -196,6 +235,8 @@ export default function askUserQuestion(pi: ExtensionAPI): void {
     parameters: PROPOSE_PARAMETERS as never,
     async execute(_call, params, _signal, _update, ctx) {
       const form = proposalOf(randomUUID(), params as ProposeParams);
+      const where = (params as ProposeParams).place;
+      if (where !== undefined) { const file = await place(form, where, ctx.cwd); return { content: [{ type: "text", text: placed(file) }], details: { ask: form.ask, file } }; }
       pi.appendEntry(KIND, { asked: form });
       ask(form, ctx);
       return { content: [{ type: "text", text: "The proposal is asked of the seller as a yes-or-no card. Their Yes or No will arrive as a later message." }], details: { ask: form.ask } };
