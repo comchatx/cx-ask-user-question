@@ -1,6 +1,6 @@
 {
   "name": "@comchatx/cx-ask-user-question",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "cx asks in the chat with options you can pick.",
   "license": "MIT",
   "author": "ComChatX",
@@ -35,6 +35,7 @@
   },
   "comchatx": {
     "name": "Question Cards",
+    "nameZh": "提问卡",
     "about": "cx 在对话里提问时会列出选项，点选即可回答。",
     "mark": {
       "line": "chat"
