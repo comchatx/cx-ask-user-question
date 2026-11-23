@@ -1,6 +1,6 @@
 {
   "name": "@comchatx/cx-ask-user-question",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "cx asks in the chat with options you can pick.",
   "license": "MIT",
   "author": "ComChatX",
@@ -38,7 +38,28 @@
     "nameZh": "提问卡",
     "about": "cx 在对话里提问时会列出选项，点选即可回答。",
     "mark": {
-      "line": "chat"
+      "on": "cx",
+      "cx": [
+        {
+          "x": 7.744,
+          "y": 16.256,
+          "size": 22.216
+        }
+      ],
+      "draw": [
+        {
+          "d": "M11.696 5.92A6.384 6.384 0 1 1 24.464 5.92A6.384 6.384 0 1 1 11.696 5.92ZM13.702 9.933L16.56 11.787L11.97 13.733Z"
+        },
+        {
+          "d": "M16.074 4.278A2.067 2.067 0 1 1 19.144 6.102C18.506 6.467 18.141 6.862 18.141 7.622",
+          "width": 1.459,
+          "cut": true
+        },
+        {
+          "d": "M17.29 9.75A0.851 0.851 0 1 1 18.992 9.75A0.851 0.851 0 1 1 17.29 9.75Z",
+          "cut": true
+        }
+      ]
     },
     "section": "extensions",
     "order": 105,
