@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+- The tile's mark on the Plugins page is the signed drawing.
+
 ## 0.1.3
 
 - `place: { file, level? }` on `ask_user_question` and `propose` writes the asking as a card to that file on the seller's board instead of the chat, and returns at once with no dialog. The card's front matter is `title`, `asks: true`, `level` where given and `questions`, the form as one line of JSON. Its body is the questions and options in words. The seller answers it in the Inbox (cx-board-tasks 0.3.5), and the answer comes to cx as the seller's message naming the card. Without `place`, both tools are as before. The skill says so in one line.
