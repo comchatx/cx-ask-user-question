@@ -98,7 +98,7 @@ it("takes a place of a Markdown file and a level of 1 to 3 on both tools, and re
 it("tells cx in its skill that place writes the card on the seller's board instead of the chat", async () => {
   const { readFileSync } = await import("node:fs");
   const skill = readFileSync(new URL("../skills/cx-ask-user-question/SKILL.md", import.meta.url), "utf8");
-  expect(skill).toContain("`place: { file }` writes the card to that file on the seller's board instead of the chat");
+  expect(skill).toContain("`place: { file }`, on `ask_user_question` and `propose` only, writes the card to that file on the seller's board instead of the chat");
 });
 
 const suggestTool = { name: SUGGEST, description: "", parameters: SUGGEST_PARAMETERS as never };

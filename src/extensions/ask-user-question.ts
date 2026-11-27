@@ -307,7 +307,7 @@ export default function askUserQuestion(pi: ExtensionAPI): void {
       const form = suggestionOf(randomUUID(), params as SuggestParams);
       pi.appendEntry(KIND, { asked: form });
       ask(form, ctx);
-      return { content: [{ type: "text", text: "The plugin card is in front of the seller. Their first Install, or their close, will arrive as a later message." }], details: { ask: form.ask } };
+      return { content: [{ type: "text", text: "The plugin card was asked for. What the seller does with it, or that none of the plugins could be shown, arrives as a later message." }], details: { ask: form.ask } };
     },
   });
 }

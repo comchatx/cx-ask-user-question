@@ -50,7 +50,9 @@ it("in pi's RPC mode a plugin card returns at once, waits as the page's form, an
   const first = await nth(pi, 1);
   await settled;
   // The turn ended with the card unanswered: the tool's result came back without it.
-  expect(pi.heard.find((message) => message["type"] === "tool_execution_end")).toMatchObject({ toolName: SUGGEST, isError: false });
+  const ended = pi.heard.find((message) => message["type"] === "tool_execution_end")!;
+  expect(ended).toMatchObject({ toolName: SUGGEST, isError: false });
+  expect((ended["result"] as { content: { text: string }[] }).content.map((one) => one.text)).toEqual(["The plugin card was asked for. What the seller does with it, or that none of the plugins could be shown, arrives as a later message."]);
   const form = JSON.parse(String(first["placeholder"])) as { ask: string };
   expect([first["title"], first["timeout"], form]).toEqual(["For your listings", NEVER, { form: PLUGINS_FORM, ask: form.ask, packages: PACKAGES }]);
 
@@ -89,6 +91,8 @@ it("in pi's RPC mode a plugin card left open is asked again, the same asking, wh
   await answered;
   expect(model.texts.at(-1)).toBe("The seller chose to install cx-review-lens.");
   expect(records()).toHaveLength(1);
+  // The open asking was asked once after the start, not again.
+  expect(second.heard.filter(isInput).filter((one) => one["placeholder"] === asked["placeholder"])).toHaveLength(1);
 }, 90_000);
 
 it("in pi's RPC mode a fourth name, or a name given twice, is refused by the tool's schema and asks the seller nothing; three names, each once, are asked", async () => {
