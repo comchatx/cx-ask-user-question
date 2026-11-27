@@ -1,9 +1,10 @@
 # Developing cx-ask-user-question
 
-One extension, `src/extensions/ask-user-question.ts`, registers two tools: `ask_user_question` and `propose`.
+One extension, `src/extensions/ask-user-question.ts`, registers three tools: `ask_user_question`, `propose` and `suggest_plugins`.
 
 - **`ask_user_question`** takes one to four questions, each with one to four options (a name and an optional line) and an optional `multiSelect`. It writes them as the ComChatX page's option form (`comchatx.options/1`).
 - **`propose`** takes one `title`, the yes-or-no question, and an optional `message`, what happens on a yes. It writes them as the page's confirm form (`comchatx.confirm/1`).
+- **`suggest_plugins`** takes a `title`, what the seller reads at the card's head, and one to three npm names in `packages`, each once. It writes `{ form: "comchatx.plugins/1", ask, packages }` as the placeholder and the title as the input's title; the page draws each name as its Plugins page does, with its own Install. The value is `{ form, added }`: the name pressed, or `null` where none could be shown; a close is pi's cancelled; any other value reads as `null`. The record's `details` are `{ form, ask, title, packages, added }`. It takes no `place`.
 - **Bounds.** The schemas' bounds (`BOUNDS`, `PROPOSE_BOUNDS`) keep the largest form under the platform's 16 KiB hold for a dialog with every character at its costliest; `test/ask.test.ts` builds those forms and measures them.
 - **A value of spaces alone.** A title, question or option name of spaces alone passes the schemas, and the page's reader (`readOptionForm`, `src/shared/option-form.ts` in the product) takes the whole form for a plain input and draws it as one; what the seller types there reads as a declined card or a No, and cx can ask again, so the schemas hold no rule for it.
 - **Both tools return at once.** Each puts its form in the placeholder of one `ctx.ui.input`, with pi's longest timeout, and does not await it. The result tells cx the card is asked for and that the answer comes later; it does not say the seller sees it.

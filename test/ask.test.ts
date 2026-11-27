@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { validateToolArguments } from "@earendil-works/pi-ai";
 import { expect, it } from "vitest";
-import { BOUNDS, CONFIRM_FORM, cardOf, NEVER, OPTION_FORM, PARAMETERS, PROPOSE, PROPOSE_BOUNDS, PROPOSE_PARAMETERS, TOOL, answerText, answersOf, confirmedOf, formOf, proposalOf, proposalText, waiting, type Params } from "../src/extensions/ask-user-question.js";
+import { BOUNDS, CONFIRM_FORM, cardOf, NEVER, OPTION_FORM, PARAMETERS, PLUGINS_FORM, PROPOSE, PROPOSE_BOUNDS, PROPOSE_PARAMETERS, SUGGEST, SUGGEST_BOUNDS, SUGGEST_PARAMETERS, TOOL, addedOf, answerText, answersOf, confirmedOf, formOf, inputOf, proposalOf, proposalText, suggestionOf, suggestionText, waiting, type Params } from "../src/extensions/ask-user-question.js";
 
 const tool = { name: TOOL, description: "", parameters: PARAMETERS as never };
 const valid = (args: unknown): unknown => validateToolArguments(tool, { type: "toolCall", id: "c", name: TOOL, arguments: args as never });
@@ -99,4 +99,39 @@ it("tells cx in its skill that place writes the card on the seller's board inste
   const { readFileSync } = await import("node:fs");
   const skill = readFileSync(new URL("../skills/cx-ask-user-question/SKILL.md", import.meta.url), "utf8");
   expect(skill).toContain("`place: { file }` writes the card to that file on the seller's board instead of the chat");
+});
+
+const suggestTool = { name: SUGGEST, description: "", parameters: SUGGEST_PARAMETERS as never };
+const validSuggestion = (args: unknown): unknown => validateToolArguments(suggestTool, { type: "toolCall", id: "c", name: SUGGEST, arguments: args as never });
+
+it("takes a plugin card of a title and one to three npm names, each once, the largest fitting the platform's hold, and refuses any other", () => {
+  const longest = (at: number): string => `@${"a".repeat(100)}/${String(at).repeat(SUGGEST_BOUNDS.name - 102)}`;
+  const params = { title: "\u0001".repeat(SUGGEST_BOUNDS.title), packages: [longest(1), longest(2), longest(3)] };
+  expect(validSuggestion(params)).toEqual(params);
+  const { title, placeholder } = inputOf(suggestionOf(randomUUID(), params));
+  expect(Buffer.byteLength(JSON.stringify({ form: "ui_request", id: randomUUID(), method: "input", title, placeholder, timeout: NEVER }))).toBeLessThan(HELD_BODY_BYTES);
+  expect(validSuggestion({ title: "For your listings", packages: ["@comchatx/cx-schedule", "pi-web-access"] })).toEqual({ title: "For your listings", packages: ["@comchatx/cx-schedule", "pi-web-access"] });
+  for (const args of [{ packages: ["a"] }, { title: "", packages: ["a"] }, { title: "x".repeat(SUGGEST_BOUNDS.title + 1), packages: ["a"] }, { title: "x" }, { title: "x", packages: [] },
+    { title: "x", packages: ["a", "b", "c", "d"] }, { title: "x", packages: ["a", "a"] }, { title: "x", packages: ["Upper"] }, { title: "x", packages: ["a b"] }, { title: "x", packages: ["a"], place: { file: "/tenant/board/a/b/c.md" } }]) {
+    expect(() => validSuggestion(args), JSON.stringify(args).slice(0, 60)).toThrow();
+  }
+});
+
+it("sends a plugin card as the page's form, the title as the input's, and says the seller's Install, close or a card none of whose plugins showed to cx", () => {
+  const suggestion = suggestionOf("s1", { title: "For your listings", packages: ["cx-review-lens", "@comchatx/cx-schedule"] });
+  expect(suggestion).toEqual({ form: PLUGINS_FORM, ask: "s1", title: "For your listings", packages: ["cx-review-lens", "@comchatx/cx-schedule"] });
+  expect(inputOf(suggestion)).toEqual({ title: "For your listings", placeholder: JSON.stringify({ form: PLUGINS_FORM, ask: "s1", packages: ["cx-review-lens", "@comchatx/cx-schedule"] }) });
+  const read = (value: string | undefined) => { const answer = addedOf(suggestion, value); return [answer.added, suggestionText(answer)]; };
+  expect(read(JSON.stringify({ form: PLUGINS_FORM, added: "@comchatx/cx-schedule" }))).toEqual(["@comchatx/cx-schedule", "The seller chose to install @comchatx/cx-schedule."]);
+  expect(read(undefined)).toEqual([null, "The seller put the plugin card away without installing any."]);
+  expect(read(JSON.stringify({ form: PLUGINS_FORM, added: null }))).toEqual([null, "None of the plugins you named could be shown to the seller."]);
+  for (const value of [JSON.stringify({ form: PLUGINS_FORM, added: "pi-web-access" }), JSON.stringify({ form: CONFIRM_FORM, confirmed: true }), "{", ""]) expect(read(value)[0], value).toBeNull();
+  const entry = (data: unknown) => ({ type: "custom", customType: "cx-ask-user-question", data });
+  expect(waiting([entry({ asked: suggestion })])).toEqual([{ asked: suggestion }]);
+});
+
+it("tells cx in its skill what suggest_plugins puts in front of the seller and how the answer comes back", async () => {
+  const { readFileSync } = await import("node:fs");
+  const skill = readFileSync(new URL("../skills/cx-ask-user-question/SKILL.md", import.meta.url), "utf8");
+  expect(skill).toContain("`suggest_plugins` puts one to three plugins, by their npm names, on one card in the seller's chat, each drawn as the Plugins page draws it; nothing is installed unless the seller presses; it returns at once, and the seller's first Install or their close arrives as a later message.");
 });

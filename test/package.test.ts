@@ -24,7 +24,7 @@ it("the pinned pi lists the package's skills as its manifest names them, with no
   await loader.reload();
   const { skills, diagnostics } = loader.getSkills();
   const { extensions, errors } = loader.getExtensions();
-  expect([errors, extensions.flatMap((extension) => [...extension.tools.keys()])]).toEqual([[], ["ask_user_question", "propose"]]);
+  expect([errors, extensions.flatMap((extension) => [...extension.tools.keys()])]).toEqual([[], ["ask_user_question", "propose", "suggest_plugins"]]);
   expect(diagnostics).toEqual([]);
   expect(manifest.pi).toEqual({ extensions: ["./dist/extensions"], skills: ["./skills"] });
   // The Plugins page names a package's skills from its `comchatx` field alone.

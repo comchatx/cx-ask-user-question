@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0
+
+- `suggest_plugins` puts one to three plugins, by their npm names, on one card in the seller's chat, under a `title` of up to 100 characters. It sends the page's plugin form (`comchatx.plugins/1`), records the asking and asks it again at `session_start`, and returns at once. The seller's first Install, their close, or a card none of whose plugins could be shown reaches cx as a later message, its `details` the form, the asking, the title, the names and `added`. The skill says so in one sentence. A page that does not read the plugin form shows the asking as a plain input.
+
 ## 0.1.4
 
 - The tile's mark on the Plugins page is the signed drawing.
