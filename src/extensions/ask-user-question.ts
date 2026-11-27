@@ -7,8 +7,11 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 export const OPTION_FORM = "comchatx.options/1";
 /** The mark of the page's confirm form: one thing proposed, drawn as the yes-or-no card. */
 export const CONFIRM_FORM = "comchatx.confirm/1";
+/** The mark of the page's plugin card: one to three npm names, each drawn as the Plugins page draws it, with its own Install. */
+export const PLUGINS_FORM = "comchatx.plugins/1";
 export const TOOL = "ask_user_question";
 export const PROPOSE = "propose";
+export const SUGGEST = "suggest_plugins";
 /** The kind of this package's entries: an asking sent, an asking answered, and the message that hands the answers to cx. */
 export const KIND = "cx-ask-user-question";
 /** pi's longest timeout: the page's hold sets no wait of its own on a dialog that carries one, and Node counts it. */
@@ -22,6 +25,10 @@ export const NEVER = 2 ** 31 - 1;
 export const BOUNDS = { questions: 4, options: 4, question: 100, label: 30, description: 60 } as const;
 /** The bounds on one proposal, held to the same hold. */
 export const PROPOSE_BOUNDS = { title: 100, message: 300 } as const;
+/** The bounds on one plugin card: its title as a proposal's, one to three npm names, each at most npm's 214 characters. */
+export const SUGGEST_BOUNDS = { title: 100, packages: 3, name: 214 } as const;
+/** An npm package's name as npm shapes it: lower case, an optional scope. */
+export const NPM_NAME = "^(?:@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*$";
 
 /** Where cx puts the asking instead of the chat: a card's file on the seller's board, and how urgent the card is. */
 export const PLACE = {
@@ -43,6 +50,20 @@ export const PROPOSE_PARAMETERS = {
     title: { type: "string", minLength: 1, maxLength: PROPOSE_BOUNDS.title, description: "The one thing proposed, as a yes-or-no question the seller reads." },
     message: { type: "string", maxLength: PROPOSE_BOUNDS.message, description: "What will happen on a yes, under the question." },
     place: PLACE,
+  },
+} as const;
+
+export const SUGGEST_PARAMETERS = {
+  type: "object",
+  additionalProperties: false,
+  required: ["title", "packages"],
+  properties: {
+    title: { type: "string", minLength: 1, maxLength: SUGGEST_BOUNDS.title, description: "What the seller reads at the card's head." },
+    packages: {
+      type: "array", minItems: 1, maxItems: SUGGEST_BOUNDS.packages, uniqueItems: true,
+      items: { type: "string", minLength: 1, maxLength: SUGGEST_BOUNDS.name, pattern: NPM_NAME },
+      description: "The plugins, by their npm names, each once.",
+    },
   },
 } as const;
 
@@ -87,8 +108,38 @@ export type Form = { readonly form: typeof OPTION_FORM; readonly ask: string; re
 export type Answer = { readonly chosen: readonly string[]; readonly own?: string } | null;
 export type ProposeParams = { readonly title: string; readonly message?: string; readonly place?: Place };
 export type Proposal = { readonly form: typeof CONFIRM_FORM; readonly ask: string; readonly title: string; readonly message?: string };
-/** Either form this package asks: what is recorded, and asked again, under its `ask`. */
-export type Asked = Form | Proposal;
+export type SuggestParams = { readonly title: string; readonly packages: readonly string[] };
+/** A plugin card as the package records it; the page is sent its form, the title going as the input's title. */
+export type Suggestion = { readonly form: typeof PLUGINS_FORM; readonly ask: string; readonly title: string; readonly packages: readonly string[] };
+/** Any form this package asks: what is recorded, and asked again, under its `ask`. */
+export type Asked = Form | Proposal | Suggestion;
+
+export const suggestionOf = (ask: string, params: SuggestParams): Suggestion => ({ form: PLUGINS_FORM, ask, title: params.title, packages: [...params.packages] });
+
+/** The input's title and placeholder for an asking: a plugin card's form carries no title, which the input's title holds. */
+export function inputOf(form: Asked): { readonly title: string; readonly placeholder: string } {
+  if (form.form === PLUGINS_FORM) return { title: form.title, placeholder: JSON.stringify({ form: PLUGINS_FORM, ask: form.ask, packages: form.packages }) };
+  return { title: form.form === CONFIRM_FORM ? form.title : form.questions[0]!.words, placeholder: JSON.stringify(form) };
+}
+
+/**
+ * The seller's answer to a plugin card, as the page sends it: the plugin they installed, `null` where none could be shown, and undefined
+ * where they put the card away. A value the page did not send reads as `null`.
+ */
+export function addedOf(suggestion: Suggestion, value: string | undefined): { readonly added: string | null; readonly shown: boolean } {
+  if (value === undefined) return { added: null, shown: true };
+  let read: unknown;
+  try { read = JSON.parse(value); } catch { read = undefined; }
+  const added = typeof read === "object" && read !== null && (read as { form?: unknown }).form === PLUGINS_FORM ? (read as { added?: unknown }).added : undefined;
+  if (typeof added === "string" && suggestion.packages.includes(added)) return { added, shown: true };
+  return { added: null, shown: !(added === null) };
+}
+
+/** What cx reads of a plugin card answered. */
+export const suggestionText = (answer: { readonly added: string | null; readonly shown: boolean }): string =>
+  answer.added !== null ? `The seller chose to install ${answer.added}.`
+    : answer.shown ? "The seller put the plugin card away without installing any."
+      : "None of the plugins you named could be shown to the seller.";
 
 export const proposalOf = (ask: string, params: ProposeParams): Proposal =>
   ({ form: CONFIRM_FORM, ask, title: params.title, ...(params.message === undefined || params.message === "" ? {} : { message: params.message }) });
@@ -142,7 +193,7 @@ export function answerText(form: Form, answers: readonly Answer[]): string {
  * The asking as a card of the seller's board: its title, `asks`, the form as one line of JSON in `questions`, `level` where cx gave one, and
  * the questions and options in words, for a reader that does not draw the form.
  */
-export function cardOf(form: Asked, level: Place["level"]): string {
+export function cardOf(form: Form | Proposal, level: Place["level"]): string {
   const title = form.form === CONFIRM_FORM ? form.title : form.questions[0]!.words;
   const words = form.form === CONFIRM_FORM ? [form.title, ...(form.message === undefined ? [] : [form.message])]
     : form.questions.map((question) => [question.words, ...question.options.map((option) => `- ${option.name}${option.line === undefined ? "" : `: ${option.line}`}`)].join("\n"));
@@ -150,7 +201,7 @@ export function cardOf(form: Asked, level: Place["level"]): string {
 }
 
 /** Writes the card to its file, the directories to it made. Nothing waits on the seller, and nothing is recorded to ask again. */
-async function place(form: Asked, where: Place, cwd: string): Promise<string> {
+async function place(form: Form | Proposal, where: Place, cwd: string): Promise<string> {
   const file = resolve(cwd, where.file);
   await mkdir(dirname(file), { recursive: true });
   await writeFile(file, cardOf(form, where.level));
@@ -185,6 +236,11 @@ export default function askUserQuestion(pi: ExtensionAPI): void {
   pi.on("session_shutdown", () => { live = false; });
   /** Hands the seller's answer to cx as a message, its `details` the page's record of the answered card. */
   const handOver = (form: Asked, value: string | undefined): void => {
+    if (form.form === PLUGINS_FORM) {
+      const answer = addedOf(form, value);
+      pi.sendMessage({ customType: KIND, content: suggestionText(answer), display: true, details: { form: PLUGINS_FORM, ask: form.ask, title: form.title, packages: form.packages, added: answer.added } }, { triggerTurn: true });
+      return;
+    }
     if (form.form === CONFIRM_FORM) {
       const confirmed = confirmedOf(value);
       pi.sendMessage({ customType: KIND, content: proposalText(form, confirmed), display: true, details: { form: CONFIRM_FORM, ask: form.ask, title: form.title, confirmed } }, { triggerTurn: true });
@@ -198,8 +254,8 @@ export default function askUserQuestion(pi: ExtensionAPI): void {
   };
   /** Puts the form in front of the seller and, whenever they answer, records the answer and hands it to cx. Nothing waits on it. */
   const ask = (form: Asked, ctx: ExtensionContext): void => {
-    const title = form.form === CONFIRM_FORM ? form.title : form.questions[0]!.words;
-    void ctx.ui.input(title, JSON.stringify(form), { timeout: NEVER }).then((value) => {
+    const { title, placeholder } = inputOf(form);
+    void ctx.ui.input(title, placeholder, { timeout: NEVER }).then((value) => {
       if (!live) return;
       pi.appendEntry(KIND, { answered: form.ask, value: value ?? null });
       handOver(form, value);
@@ -240,6 +296,18 @@ export default function askUserQuestion(pi: ExtensionAPI): void {
       pi.appendEntry(KIND, { asked: form });
       ask(form, ctx);
       return { content: [{ type: "text", text: "The proposal is asked of the seller as a yes-or-no card. Their Yes or No will arrive as a later message." }], details: { ask: form.ask } };
+    },
+  });  pi.registerTool({
+    name: SUGGEST,
+    label: "Suggest plugins to the seller",
+    description: "Put one to three plugins, by their npm names, on one card in the seller's chat, each with its own Install. Nothing is installed unless the seller presses. Returns at once; the seller's first Install or their close arrives later as a message.",
+    promptSnippet: "Suggest one to three plugins to the seller on one card, answered later",
+    parameters: SUGGEST_PARAMETERS as never,
+    async execute(_call, params, _signal, _update, ctx) {
+      const form = suggestionOf(randomUUID(), params as SuggestParams);
+      pi.appendEntry(KIND, { asked: form });
+      ask(form, ctx);
+      return { content: [{ type: "text", text: "The plugin card was asked for. What the seller does with it, or that none of the plugins could be shown, arrives as a later message." }], details: { ask: form.ask } };
     },
   });
 }
